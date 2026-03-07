@@ -5,8 +5,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/Vedu3635/PRISM/config"
-	"github.com/Vedu3635/PRISM/routes"
+	"github.com/Vedu3635/PRISM.git/config"
+	"github.com/Vedu3635/PRISM.git/routes"
 )
 
 func main() {
