@@ -9,6 +9,10 @@ func SetupRoutes(router *gin.Engine) {
 
 	api := router.Group("/api")
 
+	api.POST("/users", handlers.CreateUser)
+	api.GET("/users", handlers.GetUsers)
+	api.GET("/users/:id", handlers.GetUserByID)
+
 	api.POST("/transactions", handlers.CreateTransaction)
 	// router.GET("/", func(c *gin.Context) {
 	// 	c.String(http.StatusOK, "PRISM backend running")

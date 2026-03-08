@@ -18,8 +18,6 @@ func main() {
 
 	database.ConnectDB()
 
-	database.SeedData()
-
 	router := gin.Default()
 
 	router.SetTrustedProxies(nil)
