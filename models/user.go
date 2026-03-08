@@ -8,6 +8,7 @@ import (
 
 type User struct {
 	ID           uuid.UUID `gorm:"type:uuid;primaryKey"`
+	FirebaseUID  string    `gorm:"size:128;uniqueIndex"`
 	Email        string    `gorm:"size:255;uniqueIndex"`
 	Username     string    `gorm:"size:50;uniqueIndex"`
 	FullName     string    `gorm:"size:100"`
