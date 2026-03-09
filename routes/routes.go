@@ -9,16 +9,36 @@ func SetupRoutes(router *gin.Engine) {
 
 	api := router.Group("/api")
 
-	api.POST("/users", handlers.CreateUser)
-	api.GET("/users", handlers.GetUsers)
-	api.GET("/users/:id", handlers.GetUserByID)
+	api.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{"status": "ok"})
+	})
 
-	api.POST("/groups", handlers.CreateGroup)
-	api.GET("/groups", handlers.GetGroups)
-	api.GET("/groups/:id", handlers.GetGroupsByID)
+	// Users
+	users := api.Group("/users")
+	{
+		users.POST("/", handlers.CreateUser)
+		users.GET("/", handlers.GetUsers)
+		users.GET("/:id", handlers.GetUserByID)
+	}
 
-	api.POST("/groups/:id/members", handlers.AddMember)
-	api.GET("/groups/:id/members", handlers.GetGroupMembers)
+	groups := api.Group("/groups")
+	{
+		groups.POST("/", handlers.CreateGroup)
+		groups.GET("/", handlers.GetGroups)
+		groups.GET("/:id", handlers.GetGroupsByID)
+		groups.PUT("/:id", handlers.UpdateGroup)
+		groups.DELETE("/:id", handlers.DeleteGroup)
+
+		// Members
+		members := groups.Group("/:id/members")
+		{
+			members.POST("/", handlers.AddMember)
+			members.GET("/", handlers.GetGroupMembers)
+			members.DELETE("/:memberID", handlers.RemoveMember)
+		}
+
+		groups.POST("/:id/leave", handlers.LeaveGroup)
+	}
 
 	api.POST("/transactions", handlers.CreateTransaction)
 	// router.GET("/", func(c *gin.Context) {
