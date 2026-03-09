@@ -48,5 +48,16 @@ func SetupRoutes(router *gin.Engine) {
 	transactions := api.Group("/transactions")
 	{
 		transactions.POST("/", handlers.CreateTransaction)
+		transactions.GET("/", handlers.GetTransactions)
+		transactions.GET("/:id", handlers.GetTransactionByID)
+		transactions.PUT("/:id", handlers.UpdateTransaction)
+		transactions.DELETE("/:id", handlers.DeleteTransaction)
 	}
+
+	// Balances per group
+	groups.GET("/:groupID/balances", handlers.GetGroupBalances)
+
+	// Transactions scoped to group or user
+	groups.GET("/:groupID/transactions", handlers.GetTransactionsByGroup)
+	api.GET("/users/:userID/transactions", handlers.GetTransactionsByUser)
 }
