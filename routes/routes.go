@@ -9,6 +9,7 @@ func SetupRoutes(router *gin.Engine) {
 
 	api := router.Group("/api")
 
+	// Health
 	api.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
@@ -19,8 +20,11 @@ func SetupRoutes(router *gin.Engine) {
 		users.POST("/", handlers.CreateUser)
 		users.GET("/", handlers.GetUsers)
 		users.GET("/:id", handlers.GetUserByID)
+		users.PUT("/:id", handlers.UpdateUser)
+		users.DELETE("/:id", handlers.DeleteUser)
 	}
 
+	// Groups
 	groups := api.Group("/groups")
 	{
 		groups.POST("/", handlers.CreateGroup)
@@ -40,14 +44,9 @@ func SetupRoutes(router *gin.Engine) {
 		groups.POST("/:id/leave", handlers.LeaveGroup)
 	}
 
-	api.POST("/transactions", handlers.CreateTransaction)
-	// router.GET("/", func(c *gin.Context) {
-	// 	c.String(http.StatusOK, "PRISM backend running")
-	// })
-
-	// router.GET("/health", func(c *gin.Context) {
-	// 	c.JSON(http.StatusOK, gin.H{
-	// 		"status": "ok",
-	// 	})
-	// })
+	// Transactions
+	transactions := api.Group("/transactions")
+	{
+		transactions.POST("/", handlers.CreateTransaction)
+	}
 }
