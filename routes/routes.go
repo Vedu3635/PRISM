@@ -22,6 +22,7 @@ func SetupRoutes(router *gin.Engine) {
 		users.GET("/:id", handlers.GetUserByID)
 		users.PUT("/:id", handlers.UpdateUser)
 		users.DELETE("/:id", handlers.DeleteUser)
+		users.GET("/:id/transactions", handlers.GetTransactionsByUser)
 	}
 
 	// Groups
@@ -32,6 +33,9 @@ func SetupRoutes(router *gin.Engine) {
 		groups.GET("/:id", handlers.GetGroupsByID)
 		groups.PUT("/:id", handlers.UpdateGroup)
 		groups.DELETE("/:id", handlers.DeleteGroup)
+		groups.POST("/:id/leave", handlers.LeaveGroup)
+		groups.GET("/:id/balances", handlers.GetGroupBalances)
+		groups.GET("/:id/transactions", handlers.GetTransactionsByGroup)
 
 		// Members
 		members := groups.Group("/:id/members")
@@ -40,8 +44,6 @@ func SetupRoutes(router *gin.Engine) {
 			members.GET("/", handlers.GetGroupMembers)
 			members.DELETE("/:memberID", handlers.RemoveMember)
 		}
-
-		groups.POST("/:id/leave", handlers.LeaveGroup)
 	}
 
 	// Transactions
@@ -53,11 +55,4 @@ func SetupRoutes(router *gin.Engine) {
 		transactions.PUT("/:id", handlers.UpdateTransaction)
 		transactions.DELETE("/:id", handlers.DeleteTransaction)
 	}
-
-	// Balances per group
-	groups.GET("/:groupID/balances", handlers.GetGroupBalances)
-
-	// Transactions scoped to group or user
-	groups.GET("/:groupID/transactions", handlers.GetTransactionsByGroup)
-	api.GET("/users/:userID/transactions", handlers.GetTransactionsByUser)
 }

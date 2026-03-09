@@ -52,7 +52,7 @@ func GetTransactionByID(c *gin.Context) {
 }
 
 func GetTransactionsByGroup(c *gin.Context) {
-	groupIDParam := c.Param("groupID")
+	groupIDParam := c.Param("id") // ← was "groupID", must match /:id/
 	groupID, err := uuid.Parse(groupIDParam)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid group id"})
