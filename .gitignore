@@ -31,4 +31,4 @@ go.work.sum
 # .idea/
 # .vscode/
 
-serviceAccountKey.json
+serviceAccountKey.jsonserviceAccountKey.json
