@@ -16,6 +16,8 @@ func main() {
 
 	config.LoadEnv()
 
+	config.InitFirebase()
+
 	database.ConnectDB()
 
 	router := gin.Default()
