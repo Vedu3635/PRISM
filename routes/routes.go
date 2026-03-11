@@ -63,5 +63,12 @@ func SetupRoutes(router *gin.Engine) {
 			transactions.PUT("/:id", handlers.UpdateTransaction)
 			transactions.DELETE("/:id", handlers.DeleteTransaction)
 		}
+
+		protected.GET("/me", func(c *gin.Context) {
+			c.JSON(200, gin.H{
+				"uid":   c.GetString("uid"),
+				"email": c.GetString("email"),
+			})
+		})
 	}
 }
