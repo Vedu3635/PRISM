@@ -8,20 +8,36 @@ import (
 
 func SetupRoutes(router *gin.Engine) {
 
-	// CORS — allow React frontend
 	router.Use(middleware.CORSMiddleware())
 
 	api := router.Group("/api")
 
-	// Health — public, no auth needed
+	// ─── Public ───────────────────────────────────────────────────────────────
 	api.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
 
-	// All protected routes
+	auth := api.Group("/auth")
+	{
+		auth.POST("/signup", handlers.Signup)
+		auth.POST("/login", handlers.Login)
+	}
+
+	// ─── Protected (Firebase token + db_user_id claim required) ───────────────
+
 	protected := api.Group("/")
 	protected.Use(middleware.AuthMiddleware())
 	{
+
+		protected.GET("/me", handlers.GetMe)
+
+		protected.GET("/debug/token", func(c *gin.Context) {
+			c.JSON(200, gin.H{
+				"user_id": c.GetString("user_id"),
+				"uid":     c.GetString("uid"),
+				"email":   c.GetString("email"),
+			})
+		})
 		// Users
 		users := protected.Group("/users")
 		{
@@ -45,7 +61,6 @@ func SetupRoutes(router *gin.Engine) {
 			groups.GET("/:id/balances", handlers.GetGroupBalances)
 			groups.GET("/:id/transactions", handlers.GetTransactionsByGroup)
 
-			// Members
 			members := groups.Group("/:id/members")
 			{
 				members.POST("/", handlers.AddMember)
@@ -63,12 +78,5 @@ func SetupRoutes(router *gin.Engine) {
 			transactions.PUT("/:id", handlers.UpdateTransaction)
 			transactions.DELETE("/:id", handlers.DeleteTransaction)
 		}
-
-		protected.GET("/me", func(c *gin.Context) {
-			c.JSON(200, gin.H{
-				"uid":   c.GetString("uid"),
-				"email": c.GetString("email"),
-			})
-		})
 	}
 }
