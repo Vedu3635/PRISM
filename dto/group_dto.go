@@ -11,10 +11,11 @@ type CreateGroupRequest struct {
 }
 
 type UpdateGroupRequest struct {
-	Name        *string `json:"name"`
-	Description *string `json:"description"`
-	Type        *string `json:"type"`
-	Currency    *string `json:"currency"`
+	Name        *string    `json:"name"`
+	CreatedBy   *uuid.UUID `json:"created_by"`
+	Description *string    `json:"description"`
+	Type        *string    `json:"type"`
+	Currency    *string    `json:"currency"`
 }
 
 type AddGroupMemberRequest struct {

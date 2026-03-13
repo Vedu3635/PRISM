@@ -67,6 +67,18 @@ func GetGroupsByID(id uuid.UUID) (*models.Group, error) {
 	return &group, nil
 }
 
+// GetGroupsByUserID returns all active groups the user is a member of.
+func GetGroupsByUserID(userID uuid.UUID) ([]models.Group, error) {
+	db := database.DB
+
+	var groups []models.Group
+	err := db.Joins("JOIN group_members ON group_members.group_id = groups.id").
+		Where("group_members.user_id = ? AND groups.is_active = ?", userID, true).
+		Find(&groups).Error
+
+	return groups, err
+}
+
 func UpdateGroup(id uuid.UUID, req dto.UpdateGroupRequest) (*models.Group, error) {
 	db := database.DB
 
@@ -80,6 +92,9 @@ func UpdateGroup(id uuid.UUID, req dto.UpdateGroupRequest) (*models.Group, error
 
 	if req.Name != nil {
 		group.Name = *req.Name
+	}
+	if req.CreatedBy != nil {
+		group.CreatedBy = *req.CreatedBy
 	}
 	if req.Description != nil {
 		group.Description = req.Description
@@ -162,7 +177,6 @@ func RemoveMember(groupID uuid.UUID, memberID uuid.UUID) error {
 func LeaveGroup(groupID uuid.UUID, req dto.LeaveGroupRequest) error {
 	db := database.DB
 
-	// Prevent the admin/creator from leaving without transferring ownership
 	var member models.GroupMember
 	if err := db.Where("group_id = ? AND user_id = ?", groupID, req.UserID).First(&member).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -184,4 +198,16 @@ func LeaveGroup(groupID uuid.UUID, req dto.LeaveGroupRequest) error {
 	}
 
 	return nil
+}
+
+// GetGroupBalances returns all balances for a given group.
+func GetGroupBalances(groupID uuid.UUID) ([]models.Balance, error) {
+	db := database.DB
+
+	var balances []models.Balance
+	if err := db.Where("group_id = ?", groupID).Find(&balances).Error; err != nil {
+		return nil, err
+	}
+
+	return balances, nil
 }

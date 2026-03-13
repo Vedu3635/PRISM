@@ -47,6 +47,7 @@ func SetupRoutes(router *gin.Engine) {
 			users.PUT("/:id", handlers.UpdateUser)
 			users.DELETE("/:id", handlers.DeleteUser)
 			users.GET("/:id/transactions", handlers.GetTransactionsByUser)
+			users.GET("/groups", handlers.GetGroupsByUserID)
 		}
 
 		// Groups

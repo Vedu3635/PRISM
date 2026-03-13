@@ -52,6 +52,23 @@ func GetGroupsByID(c *gin.Context) {
 	c.JSON(http.StatusOK, group)
 }
 
+// GetGroupsByUserID returns all groups the user is a member of.
+func GetGroupsByUserID(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	groups, err := services.GetGroupsByUserID(userID.(uuid.UUID))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, groups)
+}
+
 func UpdateGroup(c *gin.Context) {
 	id, err := parseGroupID(c)
 	if err != nil {
@@ -163,9 +180,24 @@ func LeaveGroup(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "left group successfully"})
 }
 
-// parseGroupID is a helper that parses and validates the :id route param.
-// It writes the error response itself and returns a non-nil error on failure,
-// so callers can just `return` immediately.
+func GetGroupBalances(c *gin.Context) {
+	id, err := parseGroupID(c)
+	if err != nil {
+		return
+	}
+
+	balances, err := services.GetGroupBalances(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, balances)
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+// parseGroupID parses and validates the :id route param as a group UUID.
 func parseGroupID(c *gin.Context) (uuid.UUID, error) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {

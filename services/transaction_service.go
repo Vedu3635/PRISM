@@ -176,16 +176,16 @@ func DeleteTransaction(id uuid.UUID) error {
 	return nil
 }
 
-func GetGroupBalances(groupID uuid.UUID) ([]models.Balance, error) {
-	db := database.DB
+// func GetGroupBalances(groupID uuid.UUID) ([]models.Balance, error) {
+// 	db := database.DB
 
-	var balances []models.Balance
-	if err := db.Where("group_id = ?", groupID).Find(&balances).Error; err != nil {
-		return nil, err
-	}
+// 	var balances []models.Balance
+// 	if err := db.Where("group_id = ?", groupID).Find(&balances).Error; err != nil {
+// 		return nil, err
+// 	}
 
-	return balances, nil
-}
+// 	return balances, nil
+// }
 
 // updateBalance is an internal helper that upserts the net balance between two users.
 // It receives the active gorm.DB transaction so everything stays atomic.

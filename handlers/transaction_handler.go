@@ -120,22 +120,22 @@ func DeleteTransaction(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "transaction deleted"})
 }
 
-func GetGroupBalances(c *gin.Context) {
-	groupIDParam := c.Param("groupID")
-	groupID, err := uuid.Parse(groupIDParam)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid group id"})
-		return
-	}
+// func GetGroupBalances(c *gin.Context) {
+// 	groupIDParam := c.Param("groupID")
+// 	groupID, err := uuid.Parse(groupIDParam)
+// 	if err != nil {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid group id"})
+// 		return
+// 	}
 
-	balances, err := services.GetGroupBalances(groupID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
+// 	balances, err := services.GetGroupBalances(groupID)
+// 	if err != nil {
+// 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+// 		return
+// 	}
 
-	c.JSON(http.StatusOK, balances)
-}
+// 	c.JSON(http.StatusOK, balances)
+// }
 
 func parseTransactionID(c *gin.Context) (uuid.UUID, error) {
 	id, err := uuid.Parse(c.Param("id"))
