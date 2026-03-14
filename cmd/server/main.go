@@ -10,7 +10,7 @@
 //	@securityDefinitions.apikey	BearerAuth
 //	@in							header
 //	@name						Authorization
-//	@description				Firebase ID token — format: "Bearer <token>"
+//	@description				Enter: Bearer {token}
 package main
 
 import (
