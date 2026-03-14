@@ -21,6 +21,7 @@ func SetupRoutes(router *gin.Engine) {
 	{
 		auth.POST("/signup", handlers.Signup)
 		auth.POST("/login", handlers.Login)
+		auth.POST("/token", handlers.GetToken)
 	}
 
 	// ─── Protected (Firebase token + db_user_id claim required) ───────────────

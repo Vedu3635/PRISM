@@ -1,5 +1,24 @@
 basePath: /api
 definitions:
+  dto.CreateUserRequest:
+    properties:
+      email:
+        type: string
+      firebase_uid:
+        type: string
+      full_name:
+        type: string
+      password:
+        type: string
+      phone:
+        type: string
+      username:
+        type: string
+    required:
+    - email
+    - full_name
+    - username
+    type: object
   dto.LoginRequest:
     properties:
       email:
@@ -31,6 +50,30 @@ definitions:
     - full_name
     - password
     - username
+    type: object
+  dto.TokenResponse:
+    properties:
+      email:
+        type: string
+      expires_in:
+        type: string
+      id_token:
+        type: string
+      refresh_token:
+        type: string
+    type: object
+  dto.UpdateUserRequest:
+    properties:
+      currency_pref:
+        type: string
+      full_name:
+        type: string
+      password:
+        type: string
+      phone:
+        type: string
+      username:
+        type: string
     type: object
 host: localhost:8080
 info:
@@ -117,6 +160,47 @@ paths:
       summary: Register a new user
       tags:
       - auth
+  /auth/token:
+    post:
+      consumes:
+      - application/json
+      description: Exchanges email and password for a Firebase ID token. Use the returned
+        idToken as the Bearer token for all protected endpoints.
+      parameters:
+      - description: Email and password
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Firebase ID token and metadata
+          schema:
+            $ref: '#/definitions/dto.TokenResponse'
+        "400":
+          description: validation error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: invalid credentials
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get Firebase ID token
+      tags:
+      - auth
   /me:
     get:
       description: Returns the profile of the authenticated user. UUID is extracted
@@ -152,6 +236,175 @@ paths:
       summary: Get current user
       tags:
       - auth
+  /users:
+    get:
+      description: Returns all non-deleted users.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: list of users
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List all users
+      tags:
+      - users
+    post:
+      consumes:
+      - application/json
+      description: Creates a user record directly. For public registration use POST
+        /auth/signup instead.
+      parameters:
+      - description: Create user payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: created user
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: validation error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a user
+      tags:
+      - users
+  /users/{id}:
+    delete:
+      description: Sets is_deleted = true. Does not remove the row.
+      parameters:
+      - description: User UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: message
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: invalid id
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Soft-delete a user
+      tags:
+      - users
+    get:
+      description: Returns a single user by UUID.
+      parameters:
+      - description: User UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: user
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: invalid id
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: user not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get user by ID
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      description: Updates mutable fields — username, full name, phone, currency preference,
+        password.
+      parameters:
+      - description: User UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: updated user
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: invalid id or payload
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update a user
+      tags:
+      - users
 securityDefinitions:
   BearerAuth:
     description: 'Firebase ID token — format: "Bearer <token>"'
