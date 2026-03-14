@@ -7,8 +7,6 @@ import (
 	"github.com/Vedu3635/PRISM.git/database"
 	"github.com/Vedu3635/PRISM.git/routes"
 	"github.com/gin-gonic/gin"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 func main() {
@@ -23,7 +21,6 @@ func main() {
 	router := gin.Default()
 	router.SetTrustedProxies(nil)
 
-	router.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	routes.SetupRoutes(router)
 
 	log.Println("Server running on port 8080")
