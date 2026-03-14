@@ -9,6 +9,19 @@ import (
 	"github.com/google/uuid"
 )
 
+// CreateUser godoc
+//
+//	@Summary		Create a user
+//	@Description	Creates a user record directly. For public registration use POST /auth/signup instead.
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			body	body		dto.CreateUserRequest	true	"Create user payload"
+//	@Success		201		{object}	map[string]interface{}	"created user"
+//	@Failure		400		{object}	map[string]string		"validation error"
+//	@Failure		500		{object}	map[string]string		"internal server error"
+//	@Router			/users [post]
 func CreateUser(c *gin.Context) {
 	var req dto.CreateUserRequest
 
@@ -26,6 +39,16 @@ func CreateUser(c *gin.Context) {
 	c.JSON(http.StatusCreated, user)
 }
 
+// GetUsers godoc
+//
+//	@Summary		List all users
+//	@Description	Returns all non-deleted users.
+//	@Tags			users
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	map[string]interface{}	"list of users"
+//	@Failure		500	{object}	map[string]string		"internal server error"
+//	@Router			/users [get]
 func GetUsers(c *gin.Context) {
 	users, err := services.GetUsers()
 	if err != nil {
@@ -36,6 +59,18 @@ func GetUsers(c *gin.Context) {
 	c.JSON(http.StatusOK, users)
 }
 
+// GetUserByID godoc
+//
+//	@Summary		Get user by ID
+//	@Description	Returns a single user by UUID.
+//	@Tags			users
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		string					true	"User UUID"
+//	@Success		200	{object}	map[string]interface{}	"user"
+//	@Failure		400	{object}	map[string]string		"invalid id"
+//	@Failure		404	{object}	map[string]string		"user not found"
+//	@Router			/users/{id} [get]
 func GetUserByID(c *gin.Context) {
 	id, err := parseUserID(c)
 	if err != nil {
@@ -51,6 +86,20 @@ func GetUserByID(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
+// UpdateUser godoc
+//
+//	@Summary		Update a user
+//	@Description	Updates mutable fields — username, full name, phone, currency preference, password.
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id		path		string					true	"User UUID"
+//	@Param			body	body		dto.UpdateUserRequest	true	"Fields to update"
+//	@Success		200		{object}	map[string]interface{}	"updated user"
+//	@Failure		400		{object}	map[string]string		"invalid id or payload"
+//	@Failure		500		{object}	map[string]string		"internal server error"
+//	@Router			/users/{id} [put]
 func UpdateUser(c *gin.Context) {
 	id, err := parseUserID(c)
 	if err != nil {
@@ -72,6 +121,18 @@ func UpdateUser(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
+// DeleteUser godoc
+//
+//	@Summary		Soft-delete a user
+//	@Description	Sets is_deleted = true. Does not remove the row.
+//	@Tags			users
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		string				true	"User UUID"
+//	@Success		200	{object}	map[string]string	"message"
+//	@Failure		400	{object}	map[string]string	"invalid id"
+//	@Failure		500	{object}	map[string]string	"internal server error"
+//	@Router			/users/{id} [delete]
 func DeleteUser(c *gin.Context) {
 	id, err := parseUserID(c)
 	if err != nil {

@@ -1,0 +1,161 @@
+basePath: /api
+definitions:
+  dto.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  dto.SignupRequest:
+    properties:
+      email:
+        type: string
+      firebase_uid:
+        type: string
+      full_name:
+        type: string
+      password:
+        minLength: 6
+        type: string
+      phone:
+        type: string
+      username:
+        type: string
+    required:
+    - email
+    - firebase_uid
+    - full_name
+    - password
+    - username
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: Expense splitting and group finance management backend.
+  title: PRISM API
+  version: "1.0"
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Validates credentials. Use the Firebase SDK separately to get an
+        ID token.
+      parameters:
+      - description: Login payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: user object
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: validation error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: invalid credentials
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Login with email and password
+      tags:
+      - auth
+  /auth/signup:
+    post:
+      consumes:
+      - application/json
+      description: Creates a user in the DB and stamps a Firebase custom claim with
+        the DB UUID.
+      parameters:
+      - description: Signup payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.SignupRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: created user
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: validation error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: email or username already in use
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Register a new user
+      tags:
+      - auth
+  /me:
+    get:
+      description: Returns the profile of the authenticated user. UUID is extracted
+        from Firebase token claims — no extra DB lookup.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: current user
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: user not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get current user
+      tags:
+      - auth
+securityDefinitions:
+  BearerAuth:
+    description: 'Firebase ID token — format: "Bearer <token>"'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

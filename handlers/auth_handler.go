@@ -10,6 +10,19 @@ import (
 	"github.com/Vedu3635/PRISM.git/services"
 )
 
+// Signup godoc
+//
+//	@Summary		Register a new user
+//	@Description	Creates a user in the DB and stamps a Firebase custom claim with the DB UUID.
+//	@Tags			auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		dto.SignupRequest		true	"Signup payload"
+//	@Success		201		{object}	map[string]interface{}	"created user"
+//	@Failure		400		{object}	map[string]string		"validation error"
+//	@Failure		409		{object}	map[string]string		"email or username already in use"
+//	@Failure		500		{object}	map[string]string		"internal server error"
+//	@Router			/auth/signup [post]
 func Signup(c *gin.Context) {
 	var req dto.SignupRequest
 
@@ -31,6 +44,18 @@ func Signup(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"user": user})
 }
 
+// Login godoc
+//
+//	@Summary		Login with email and password
+//	@Description	Validates credentials. Use the Firebase SDK separately to get an ID token.
+//	@Tags			auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		dto.LoginRequest		true	"Login payload"
+//	@Success		200		{object}	map[string]interface{}	"user object"
+//	@Failure		400		{object}	map[string]string		"validation error"
+//	@Failure		401		{object}	map[string]string		"invalid credentials"
+//	@Router			/auth/login [post]
 func Login(c *gin.Context) {
 	var req dto.LoginRequest
 
@@ -49,6 +74,18 @@ func Login(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"user": user})
 }
 
+// GetMe godoc
+//
+//	@Summary		Get current user
+//	@Description	Returns the profile of the authenticated user. UUID is extracted from Firebase token claims — no extra DB lookup.
+//	@Tags			auth
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	map[string]interface{}	"current user"
+//	@Failure		401	{object}	map[string]string		"unauthorized"
+//	@Failure		404	{object}	map[string]string		"user not found"
+//	@Failure		500	{object}	map[string]string		"internal server error"
+//	@Router			/me [get]
 func GetMe(c *gin.Context) {
 	// user_id is set by AuthMiddleware — extracted from token claims, no DB hit
 	userIDVal, exists := c.Get("user_id")
