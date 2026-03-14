@@ -13,7 +13,7 @@ import (
 // CreateGroup godoc
 //
 //	@Summary		Create a group
-//	@Description	Creates a new expense-splitting group.
+//	@Description	Creates a new expense-splitting group. The caller is automatically added as admin.
 //	@Tags			groups
 //	@Accept			json
 //	@Produce		json
@@ -99,13 +99,12 @@ func GetGroupsByID(c *gin.Context) {
 //	@Failure		500	{object}	map[string]string	"internal server error"
 //	@Router			/users/groups [get]
 func GetGroupsByUserID(c *gin.Context) {
-	userID, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+	callerID, ok := extractCallerID(c)
+	if !ok {
 		return
 	}
 
-	groups, err := services.GetGroupsByUserID(userID.(uuid.UUID))
+	groups, err := services.GetGroupsByUserID(callerID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -117,7 +116,7 @@ func GetGroupsByUserID(c *gin.Context) {
 // UpdateGroup godoc
 //
 //	@Summary		Update a group
-//	@Description	Updates mutable fields on a group — name, description, type, currency.
+//	@Description	Updates mutable fields on a group. Only group admins can perform this action.
 //	@Tags			groups
 //	@Accept			json
 //	@Produce		json
@@ -126,11 +125,22 @@ func GetGroupsByUserID(c *gin.Context) {
 //	@Param			body	body		dto.UpdateGroupRequest	true	"Fields to update"
 //	@Success		200		{object}	models.Group			"updated group"
 //	@Failure		400		{object}	map[string]string		"invalid id or payload"
+//	@Failure		403		{object}	map[string]string		"forbidden — admins only"
 //	@Failure		500		{object}	map[string]string		"internal server error"
 //	@Router			/groups/{id} [put]
 func UpdateGroup(c *gin.Context) {
 	id, err := parseGroupID(c)
 	if err != nil {
+		return
+	}
+
+	callerID, ok := extractCallerID(c)
+	if !ok {
+		return
+	}
+
+	// ── Admin check ───────────────────────────────────────────────────────────
+	if !requireGroupAdmin(c, id, callerID) {
 		return
 	}
 
@@ -152,18 +162,29 @@ func UpdateGroup(c *gin.Context) {
 // DeleteGroup godoc
 //
 //	@Summary		Delete a group
-//	@Description	Soft-deletes a group by setting is_active = false.
+//	@Description	Soft-deletes a group (is_active = false). Only group admins can perform this action.
 //	@Tags			groups
 //	@Produce		json
 //	@Security		BearerAuth
 //	@Param			id	path		string				true	"Group UUID"
 //	@Success		200	{object}	map[string]string	"message"
 //	@Failure		400	{object}	map[string]string	"invalid id"
+//	@Failure		403	{object}	map[string]string	"forbidden — admins only"
 //	@Failure		500	{object}	map[string]string	"internal server error"
 //	@Router			/groups/{id} [delete]
 func DeleteGroup(c *gin.Context) {
 	id, err := parseGroupID(c)
 	if err != nil {
+		return
+	}
+
+	callerID, ok := extractCallerID(c)
+	if !ok {
+		return
+	}
+
+	// ── Admin check ───────────────────────────────────────────────────────────
+	if !requireGroupAdmin(c, id, callerID) {
 		return
 	}
 
@@ -178,7 +199,7 @@ func DeleteGroup(c *gin.Context) {
 // AddMember godoc
 //
 //	@Summary		Add a member to a group
-//	@Description	Adds a user to the specified group with a given role (admin or member).
+//	@Description	Adds a user to the specified group with a given role (admin or member). Only group admins can add members.
 //	@Tags			group-members
 //	@Accept			json
 //	@Produce		json
@@ -187,11 +208,22 @@ func DeleteGroup(c *gin.Context) {
 //	@Param			body	body		dto.AddGroupMemberRequest	true	"Member payload"
 //	@Success		201		{object}	map[string]string			"message"
 //	@Failure		400		{object}	map[string]string			"invalid id or payload"
+//	@Failure		403		{object}	map[string]string			"forbidden — admins only"
 //	@Failure		500		{object}	map[string]string			"internal server error"
 //	@Router			/groups/{id}/members [post]
 func AddMember(c *gin.Context) {
 	id, err := parseGroupID(c)
 	if err != nil {
+		return
+	}
+
+	callerID, ok := extractCallerID(c)
+	if !ok {
+		return
+	}
+
+	// ── Admin check ───────────────────────────────────────────────────────────
+	if !requireGroupAdmin(c, id, callerID) {
 		return
 	}
 
@@ -239,7 +271,7 @@ func GetGroupMembers(c *gin.Context) {
 // RemoveMember godoc
 //
 //	@Summary		Remove a member from a group
-//	@Description	Removes the specified member from the group.
+//	@Description	Removes the specified member from the group. Only group admins can remove members.
 //	@Tags			group-members
 //	@Produce		json
 //	@Security		BearerAuth
@@ -247,11 +279,22 @@ func GetGroupMembers(c *gin.Context) {
 //	@Param			memberID	path		string				true	"Member UUID"
 //	@Success		200			{object}	map[string]string	"message"
 //	@Failure		400			{object}	map[string]string	"invalid id"
+//	@Failure		403			{object}	map[string]string	"forbidden — admins only"
 //	@Failure		500			{object}	map[string]string	"internal server error"
 //	@Router			/groups/{id}/members/{memberID} [delete]
 func RemoveMember(c *gin.Context) {
 	groupID, err := parseGroupID(c)
 	if err != nil {
+		return
+	}
+
+	callerID, ok := extractCallerID(c)
+	if !ok {
+		return
+	}
+
+	// ── Admin check ───────────────────────────────────────────────────────────
+	if !requireGroupAdmin(c, groupID, callerID) {
 		return
 	}
 
@@ -273,16 +316,16 @@ func RemoveMember(c *gin.Context) {
 // LeaveGroup godoc
 //
 //	@Summary		Leave a group
-//	@Description	Removes the specified user from the group. Pass the user_id in the request body.
+//	@Description	Removes the authenticated user from the group. Admins must transfer ownership before leaving.
 //	@Tags			groups
-//	@Accept			json
 //	@Produce		json
 //	@Security		BearerAuth
-//	@Param			id		path		string					true	"Group UUID"
-//	@Param			body	body		dto.LeaveGroupRequest	true	"User to remove"
-//	@Success		200		{object}	map[string]string		"message"
-//	@Failure		400		{object}	map[string]string		"invalid id or payload"
-//	@Failure		500		{object}	map[string]string		"internal server error"
+//	@Param			id	path		string				true	"Group UUID"
+//	@Success		200	{object}	map[string]string	"message"
+//	@Failure		400	{object}	map[string]string	"invalid id"
+//	@Failure		401	{object}	map[string]string	"unauthorized"
+//	@Failure		422	{object}	map[string]string	"admin cannot leave without transferring ownership"
+//	@Failure		500	{object}	map[string]string	"internal server error"
 //	@Router			/groups/{id}/leave [post]
 func LeaveGroup(c *gin.Context) {
 	groupID, err := parseGroupID(c)
@@ -290,13 +333,17 @@ func LeaveGroup(c *gin.Context) {
 		return
 	}
 
-	var req dto.LeaveGroupRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	// ── Extract caller from token — do NOT trust request body ─────────────────
+	callerID, ok := extractCallerID(c)
+	if !ok {
 		return
 	}
 
-	if err := services.LeaveGroup(groupID, req); err != nil {
+	if err := services.LeaveGroup(groupID, callerID); err != nil {
+		if err.Error() == "admin cannot leave the group without transferring ownership first" {
+			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -333,11 +380,25 @@ func GetGroupBalances(c *gin.Context) {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-// parseGroupID parses and validates the :id route param as a group UUID.
 func parseGroupID(c *gin.Context) (uuid.UUID, error) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid group id"})
 	}
 	return id, err
+}
+
+// requireGroupAdmin checks that the caller is an admin of the group.
+// Writes 403 and returns false if not.
+func requireGroupAdmin(c *gin.Context, groupID uuid.UUID, callerID uuid.UUID) bool {
+	isAdmin, err := services.IsGroupAdmin(groupID, callerID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return false
+	}
+	if !isAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "only group admins can perform this action"})
+		return false
+	}
+	return true
 }

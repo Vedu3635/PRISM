@@ -176,19 +176,25 @@ func DeleteTransaction(id uuid.UUID) error {
 	return nil
 }
 
-// func GetGroupBalances(groupID uuid.UUID) ([]models.Balance, error) {
-// 	db := database.DB
+// ─── Internal helpers ─────────────────────────────────────────────────────────
 
-// 	var balances []models.Balance
-// 	if err := db.Where("group_id = ?", groupID).Find(&balances).Error; err != nil {
-// 		return nil, err
-// 	}
+// IsTransactionPayer checks whether the given user is the one who paid for the transaction.
+func IsTransactionPayer(txID uuid.UUID, userID uuid.UUID) (bool, error) {
+	db := database.DB
 
-// 	return balances, nil
-// }
+	var transaction models.Transaction
+	err := db.First(&transaction, "id = ? AND status = ?", txID, "active").Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return false, errors.New("transaction not found")
+	}
+	if err != nil {
+		return false, err
+	}
+
+	return transaction.PaidBy == userID, nil
+}
 
 // updateBalance is an internal helper that upserts the net balance between two users.
-// It receives the active gorm.DB transaction so everything stays atomic.
 func updateBalance(tx *gorm.DB, groupID, fromUser, toUser uuid.UUID, amount float64) error {
 	var balance models.Balance
 

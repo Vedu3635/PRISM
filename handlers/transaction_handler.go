@@ -12,7 +12,7 @@ import (
 // CreateTransaction godoc
 //
 //	@Summary		Create a transaction
-//	@Description	Records a new expense in a group with participant splits.
+//	@Description	Records a new expense in a group with participant splits. The paid_by field must match the authenticated user.
 //	@Tags			transactions
 //	@Accept			json
 //	@Produce		json
@@ -20,15 +20,23 @@ import (
 //	@Param			body	body		dto.CreateTransactionRequest	true	"Transaction payload"
 //	@Success		201		{object}	models.Transaction				"created transaction"
 //	@Failure		400		{object}	map[string]string				"validation error"
+//	@Failure		403		{object}	map[string]string				"paid_by must match authenticated user"
 //	@Failure		500		{object}	map[string]string				"internal server error"
 //	@Router			/transactions [post]
 func CreateTransaction(c *gin.Context) {
-	var req dto.CreateTransactionRequest
+	callerID, ok := extractCallerID(c)
+	if !ok {
+		return
+	}
 
+	var req dto.CreateTransactionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	// ── Force paid_by to the authenticated user — never trust client ──────────
+	req.PaidBy = callerID
 
 	tx, err := services.CreateTransaction(req)
 	if err != nil {
@@ -42,7 +50,7 @@ func CreateTransaction(c *gin.Context) {
 // GetTransactions godoc
 //
 //	@Summary		List all transactions
-//	@Description	Returns all transactions accessible to the authenticated user.
+//	@Description	Returns all active transactions.
 //	@Tags			transactions
 //	@Produce		json
 //	@Security		BearerAuth
@@ -99,8 +107,7 @@ func GetTransactionByID(c *gin.Context) {
 //	@Failure		500	{object}	map[string]string	"internal server error"
 //	@Router			/groups/{id}/transactions [get]
 func GetTransactionsByGroup(c *gin.Context) {
-	groupIDParam := c.Param("id") // ← was "groupID", must match /:id/
-	groupID, err := uuid.Parse(groupIDParam)
+	groupID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid group id"})
 		return
@@ -118,7 +125,7 @@ func GetTransactionsByGroup(c *gin.Context) {
 // GetTransactionsByUser godoc
 //
 //	@Summary		Get transactions for a user
-//	@Description	Returns all transactions involving the specified user.
+//	@Description	Returns all transactions where the specified user is the payer.
 //	@Tags			users
 //	@Produce		json
 //	@Security		BearerAuth
@@ -128,8 +135,7 @@ func GetTransactionsByGroup(c *gin.Context) {
 //	@Failure		500	{object}	map[string]string	"internal server error"
 //	@Router			/users/{id}/transactions [get]
 func GetTransactionsByUser(c *gin.Context) {
-	userIDParam := c.Param("userID")
-	userID, err := uuid.Parse(userIDParam)
+	userID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
 		return
@@ -147,7 +153,7 @@ func GetTransactionsByUser(c *gin.Context) {
 // UpdateTransaction godoc
 //
 //	@Summary		Update a transaction
-//	@Description	Updates mutable fields on a transaction — title, category, notes, receipt URL.
+//	@Description	Updates mutable fields on a transaction. Only the user who paid can update it.
 //	@Tags			transactions
 //	@Accept			json
 //	@Produce		json
@@ -156,11 +162,22 @@ func GetTransactionsByUser(c *gin.Context) {
 //	@Param			body	body		dto.UpdateTransactionRequest	true	"Fields to update"
 //	@Success		200		{object}	models.Transaction				"updated transaction"
 //	@Failure		400		{object}	map[string]string				"invalid id or payload"
+//	@Failure		403		{object}	map[string]string				"forbidden — only the payer can update"
 //	@Failure		500		{object}	map[string]string				"internal server error"
 //	@Router			/transactions/{id} [put]
 func UpdateTransaction(c *gin.Context) {
 	id, err := parseTransactionID(c)
 	if err != nil {
+		return
+	}
+
+	callerID, ok := extractCallerID(c)
+	if !ok {
+		return
+	}
+
+	// ── Payer check ───────────────────────────────────────────────────────────
+	if !requireTransactionPayer(c, id, callerID) {
 		return
 	}
 
@@ -182,18 +199,29 @@ func UpdateTransaction(c *gin.Context) {
 // DeleteTransaction godoc
 //
 //	@Summary		Delete a transaction
-//	@Description	Soft-deletes a transaction by UUID.
+//	@Description	Soft-deletes a transaction (status = deleted). Only the user who paid can delete it.
 //	@Tags			transactions
 //	@Produce		json
 //	@Security		BearerAuth
 //	@Param			id	path		string				true	"Transaction UUID"
 //	@Success		200	{object}	map[string]string	"message"
 //	@Failure		400	{object}	map[string]string	"invalid id"
+//	@Failure		403	{object}	map[string]string	"forbidden — only the payer can delete"
 //	@Failure		500	{object}	map[string]string	"internal server error"
 //	@Router			/transactions/{id} [delete]
 func DeleteTransaction(c *gin.Context) {
 	id, err := parseTransactionID(c)
 	if err != nil {
+		return
+	}
+
+	callerID, ok := extractCallerID(c)
+	if !ok {
+		return
+	}
+
+	// ── Payer check ───────────────────────────────────────────────────────────
+	if !requireTransactionPayer(c, id, callerID) {
 		return
 	}
 
@@ -205,22 +233,7 @@ func DeleteTransaction(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "transaction deleted"})
 }
 
-// func GetGroupBalances(c *gin.Context) {
-// 	groupIDParam := c.Param("groupID")
-// 	groupID, err := uuid.Parse(groupIDParam)
-// 	if err != nil {
-// 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid group id"})
-// 		return
-// 	}
-
-// 	balances, err := services.GetGroupBalances(groupID)
-// 	if err != nil {
-// 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-// 		return
-// 	}
-
-// 	c.JSON(http.StatusOK, balances)
-// }
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 func parseTransactionID(c *gin.Context) (uuid.UUID, error) {
 	id, err := uuid.Parse(c.Param("id"))
@@ -228,4 +241,23 @@ func parseTransactionID(c *gin.Context) (uuid.UUID, error) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid transaction id"})
 	}
 	return id, err
+}
+
+// requireTransactionPayer checks that the caller is the one who paid for the transaction.
+// Writes 403 and returns false if not.
+func requireTransactionPayer(c *gin.Context, txID uuid.UUID, callerID uuid.UUID) bool {
+	isPayer, err := services.IsTransactionPayer(txID, callerID)
+	if err != nil {
+		if err.Error() == "transaction not found" {
+			c.JSON(http.StatusNotFound, gin.H{"error": "transaction not found"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
+		return false
+	}
+	if !isPayer {
+		c.JSON(http.StatusForbidden, gin.H{"error": "only the payer can modify this transaction"})
+		return false
+	}
+	return true
 }

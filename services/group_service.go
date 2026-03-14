@@ -32,6 +32,7 @@ func CreateGroup(req dto.CreateGroupRequest) (*models.Group, error) {
 		return nil, err
 	}
 
+	// Creator is automatically made admin
 	member := models.GroupMember{
 		ID:       uuid.New(),
 		GroupID:  group.ID,
@@ -174,13 +175,14 @@ func RemoveMember(groupID uuid.UUID, memberID uuid.UUID) error {
 	return nil
 }
 
-func LeaveGroup(groupID uuid.UUID, req dto.LeaveGroupRequest) error {
+// LeaveGroup now takes the callerID directly from the token — no DTO needed.
+func LeaveGroup(groupID uuid.UUID, callerID uuid.UUID) error {
 	db := database.DB
 
 	var member models.GroupMember
-	if err := db.Where("group_id = ? AND user_id = ?", groupID, req.UserID).First(&member).Error; err != nil {
+	if err := db.Where("group_id = ? AND user_id = ?", groupID, callerID).First(&member).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return errors.New("user is not a member of this group")
+			return errors.New("you are not a member of this group")
 		}
 		return err
 	}
@@ -189,7 +191,7 @@ func LeaveGroup(groupID uuid.UUID, req dto.LeaveGroupRequest) error {
 		return errors.New("admin cannot leave the group without transferring ownership first")
 	}
 
-	result := db.Where("group_id = ? AND user_id = ?", groupID, req.UserID).Delete(&models.GroupMember{})
+	result := db.Where("group_id = ? AND user_id = ?", groupID, callerID).Delete(&models.GroupMember{})
 	if result.Error != nil {
 		return result.Error
 	}
@@ -210,4 +212,42 @@ func GetGroupBalances(groupID uuid.UUID) ([]models.Balance, error) {
 	}
 
 	return balances, nil
+}
+
+// ─── Internal helpers ─────────────────────────────────────────────────────────
+
+// IsGroupAdmin checks whether the given user has the admin role in the group.
+func IsGroupAdmin(groupID uuid.UUID, userID uuid.UUID) (bool, error) {
+	db := database.DB
+
+	var member models.GroupMember
+	err := db.Where("group_id = ? AND user_id = ? AND role = ?", groupID, userID, "admin").
+		First(&member).Error
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+// IsGroupMember checks whether the given user is a member of the group (any role).
+func IsGroupMember(groupID uuid.UUID, userID uuid.UUID) (bool, error) {
+	db := database.DB
+
+	var member models.GroupMember
+	err := db.Where("group_id = ? AND user_id = ?", groupID, userID).
+		First(&member).Error
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }

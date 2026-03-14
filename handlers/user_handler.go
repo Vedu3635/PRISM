@@ -86,23 +86,23 @@ func GetUserByID(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
-// UpdateUser godoc
+// UpdateMe godoc
 //
-//	@Summary		Update a user
-//	@Description	Updates mutable fields — username, full name, phone, currency preference, password.
+//	@Summary		Update current user
+//	@Description	Updates the authenticated user's own profile. ID is extracted from the Bearer token — no need to pass it in the URL.
 //	@Tags			users
 //	@Accept			json
 //	@Produce		json
 //	@Security		BearerAuth
-//	@Param			id		path		string					true	"User UUID"
 //	@Param			body	body		dto.UpdateUserRequest	true	"Fields to update"
 //	@Success		200		{object}	map[string]interface{}	"updated user"
-//	@Failure		400		{object}	map[string]string		"invalid id or payload"
+//	@Failure		400		{object}	map[string]string		"validation error"
+//	@Failure		401		{object}	map[string]string		"unauthorized"
 //	@Failure		500		{object}	map[string]string		"internal server error"
-//	@Router			/users/{id} [put]
-func UpdateUser(c *gin.Context) {
-	id, err := parseUserID(c)
-	if err != nil {
+//	@Router			/users/me [put]
+func UpdateMe(c *gin.Context) {
+	callerID, ok := extractCallerID(c)
+	if !ok {
 		return
 	}
 
@@ -112,7 +112,7 @@ func UpdateUser(c *gin.Context) {
 		return
 	}
 
-	user, err := services.UpdateUser(id, req)
+	user, err := services.UpdateUser(callerID, req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -121,31 +121,32 @@ func UpdateUser(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
-// DeleteUser godoc
+// DeleteMe godoc
 //
-//	@Summary		Soft-delete a user
-//	@Description	Sets is_deleted = true. Does not remove the row.
+//	@Summary		Delete current user
+//	@Description	Soft-deletes the authenticated user's own account (is_deleted = true). ID is extracted from the Bearer token.
 //	@Tags			users
 //	@Produce		json
 //	@Security		BearerAuth
-//	@Param			id	path		string				true	"User UUID"
 //	@Success		200	{object}	map[string]string	"message"
-//	@Failure		400	{object}	map[string]string	"invalid id"
+//	@Failure		401	{object}	map[string]string	"unauthorized"
 //	@Failure		500	{object}	map[string]string	"internal server error"
-//	@Router			/users/{id} [delete]
-func DeleteUser(c *gin.Context) {
-	id, err := parseUserID(c)
-	if err != nil {
+//	@Router			/users/me [delete]
+func DeleteMe(c *gin.Context) {
+	callerID, ok := extractCallerID(c)
+	if !ok {
 		return
 	}
 
-	if err := services.DeleteUser(id); err != nil {
+	if err := services.DeleteUser(callerID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "user deleted"})
+	c.JSON(http.StatusOK, gin.H{"message": "account deleted"})
 }
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 func parseUserID(c *gin.Context) (uuid.UUID, error) {
 	id, err := uuid.Parse(c.Param("id"))
@@ -153,4 +154,23 @@ func parseUserID(c *gin.Context) (uuid.UUID, error) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
 	}
 	return id, err
+}
+
+// extractCallerID pulls the authenticated user's UUID from the gin context.
+// It writes the appropriate error response and returns false if extraction fails.
+// Reuse this anywhere you need the caller's ID from the token.
+func extractCallerID(c *gin.Context) (uuid.UUID, bool) {
+	val, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return uuid.Nil, false
+	}
+
+	id, ok := val.(uuid.UUID)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "invalid user id in context"})
+		return uuid.Nil, false
+	}
+
+	return id, true
 }

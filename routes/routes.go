@@ -44,11 +44,13 @@ func SetupRoutes(router *gin.Engine) {
 		{
 			users.POST("/", handlers.CreateUser)
 			users.GET("/", handlers.GetUsers)
-			users.GET("/:id", handlers.GetUserByID)
-			users.PUT("/:id", handlers.UpdateUser)
-			users.DELETE("/:id", handlers.DeleteUser)
-			users.GET("/:id/transactions", handlers.GetTransactionsByUser)
+
+			users.PUT("/:id", handlers.UpdateMe)
+			users.DELETE("/:id", handlers.DeleteMe)
 			users.GET("/groups", handlers.GetGroupsByUserID)
+
+			users.GET("/:id", handlers.GetUserByID)
+			users.GET("/:id/transactions", handlers.GetTransactionsByUser)
 		}
 
 		// Groups
