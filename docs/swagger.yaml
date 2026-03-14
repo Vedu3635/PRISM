@@ -31,6 +31,44 @@ definitions:
     - name
     - type
     type: object
+  dto.CreateTransactionRequest:
+    properties:
+      amount:
+        type: number
+      category:
+        type: string
+      currency:
+        type: string
+      group_id:
+        type: string
+      notes:
+        type: string
+      paid_by:
+        type: string
+      participants:
+        items:
+          $ref: '#/definitions/dto.ParticipantSplit'
+        minItems: 1
+        type: array
+      receipt_url:
+        type: string
+      split_type:
+        enum:
+        - equal
+        - exact
+        - percentage
+        type: string
+      title:
+        type: string
+    required:
+    - amount
+    - currency
+    - group_id
+    - paid_by
+    - participants
+    - split_type
+    - title
+    type: object
   dto.CreateUserRequest:
     properties:
       email:
@@ -66,6 +104,16 @@ definitions:
     required:
     - email
     - password
+    type: object
+  dto.ParticipantSplit:
+    properties:
+      owed_amount:
+        type: number
+      user_id:
+        type: string
+    required:
+    - owed_amount
+    - user_id
     type: object
   dto.SignupRequest:
     properties:
@@ -111,6 +159,17 @@ definitions:
       name:
         type: string
       type:
+        type: string
+    type: object
+  dto.UpdateTransactionRequest:
+    properties:
+      category:
+        type: string
+      notes:
+        type: string
+      receipt_url:
+        type: string
+      title:
         type: string
     type: object
   dto.UpdateUserRequest:
@@ -164,6 +223,39 @@ definitions:
       role:
         type: string
       userID:
+        type: string
+    type: object
+  models.Transaction:
+    properties:
+      amount:
+        format: float64
+        type: number
+      category:
+        type: string
+      createdAt:
+        type: string
+      currency:
+        type: string
+      groupID:
+        type: string
+      id:
+        type: string
+      metadata:
+        additionalProperties: true
+        type: object
+      notes:
+        type: string
+      paidBy:
+        type: string
+      receiptURL:
+        type: string
+      splitType:
+        type: string
+      status:
+        type: string
+      title:
+        type: string
+      transactedAt:
         type: string
     type: object
 host: localhost:8080
@@ -653,6 +745,41 @@ paths:
       summary: Remove a member from a group
       tags:
       - group-members
+  /groups/{id}/transactions:
+    get:
+      description: Returns all transactions belonging to the specified group.
+      parameters:
+      - description: Group UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: transactions
+          schema:
+            items:
+              $ref: '#/definitions/models.Transaction'
+            type: array
+        "400":
+          description: invalid id
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get transactions for a group
+      tags:
+      - groups
   /me:
     get:
       description: Returns the profile of the authenticated user. UUID is extracted
@@ -688,6 +815,172 @@ paths:
       summary: Get current user
       tags:
       - auth
+  /transactions:
+    get:
+      description: Returns all transactions accessible to the authenticated user.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: transactions
+          schema:
+            items:
+              $ref: '#/definitions/models.Transaction'
+            type: array
+        "500":
+          description: internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List all transactions
+      tags:
+      - transactions
+    post:
+      consumes:
+      - application/json
+      description: Records a new expense in a group with participant splits.
+      parameters:
+      - description: Transaction payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateTransactionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: created transaction
+          schema:
+            $ref: '#/definitions/models.Transaction'
+        "400":
+          description: validation error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a transaction
+      tags:
+      - transactions
+  /transactions/{id}:
+    delete:
+      description: Soft-deletes a transaction by UUID.
+      parameters:
+      - description: Transaction UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: message
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: invalid id
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete a transaction
+      tags:
+      - transactions
+    get:
+      description: Returns a single transaction by UUID.
+      parameters:
+      - description: Transaction UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: transaction
+          schema:
+            $ref: '#/definitions/models.Transaction'
+        "400":
+          description: invalid id
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: transaction not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get transaction by ID
+      tags:
+      - transactions
+    put:
+      consumes:
+      - application/json
+      description: Updates mutable fields on a transaction — title, category, notes,
+        receipt URL.
+      parameters:
+      - description: Transaction UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateTransactionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: updated transaction
+          schema:
+            $ref: '#/definitions/models.Transaction'
+        "400":
+          description: invalid id or payload
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update a transaction
+      tags:
+      - transactions
   /users:
     get:
       description: Returns all non-deleted users.
@@ -855,6 +1148,41 @@ paths:
       security:
       - BearerAuth: []
       summary: Update a user
+      tags:
+      - users
+  /users/{id}/transactions:
+    get:
+      description: Returns all transactions involving the specified user.
+      parameters:
+      - description: User UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: transactions
+          schema:
+            items:
+              $ref: '#/definitions/models.Transaction'
+            type: array
+        "400":
+          description: invalid id
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get transactions for a user
       tags:
       - users
   /users/groups:
